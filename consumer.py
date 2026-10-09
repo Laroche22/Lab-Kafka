@@ -1,50 +1,78 @@
-# %%
+import re
 from confluent_kafka import Consumer
 
-# %%
-conf = {'bootstrap.servers': 'localhost:9092',
-        'group.id': 'foo',
-        'auto.offset.reset': 'smallest'}
+# Kafka configuration
+conf = {
+    'bootstrap.servers': 'localhost:9092',
+    'group.id': 'book-consumer-group',
+    'auto.offset.reset': 'earliest'
+}
+
+TOPIC = 'book-lines'
+OUTPUT_FILE = 'cleaned_book.txt'
+
+MAX_EMPTY_POLLS = 10
+MAX_ERRORS = 5
+
+
+def clean_text(text):
+    """Clean and normalize each received line."""
+    text = text.strip()
+    text = re.sub(r'[\x00-\x08\x0b-\x1f\x7f]', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text
+
 
 consumer = Consumer(conf)
+consumer.subscribe([TOPIC])
 
-# %%
-topic='timer'
-consumer.subscribe([topic])
-
-# %%
-# Configuration
-MAX_EMPTY_POLLS = 10  # Ends after ~10 seconds of silence
-MAX_ERRORS = 5        # Ends after 5 consecutive errors
+message_count = 0
 empty_polls = 0
 error_count = 0
 
-while True:
-    msg = consumer.poll(1.0)
+print(f"Subscribed to topic: {TOPIC}")
+print("Waiting for messages...")
 
-    # 1. Handle "No Message" (Timeout)
-    if msg is None:
-        empty_polls += 1
-        if empty_polls >= MAX_EMPTY_POLLS:
-            print("Closing: No new messages received.")
-            break
-        continue
+try:
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as output:
+        while True:
+            msg = consumer.poll(1.0)
 
-    # 2. Handle Errors
-    if msg.error():
-        error_count += 1
-        print(f"Consumer error: {msg.error()}")
-        if error_count >= MAX_ERRORS:
-            print("Closing: Too many consecutive errors.")
-            break
-        continue
+            if msg is None:
+                empty_polls += 1
 
-    # 3. Handle Success
-    # Reset counters when we actually get data
-    empty_polls = 0
-    error_count = 0
+                if empty_polls >= MAX_EMPTY_POLLS:
+                    print("No new messages. Stopping consumer.")
+                    break
 
-    print(f"Rcvd message: {msg.value().decode('utf-8')}")
+                continue
 
-# Clean up
-consumer.close()
+            if msg.error():
+                error_count += 1
+                print(f"Consumer error: {msg.error()}")
+
+                if error_count >= MAX_ERRORS:
+                    print("Too many errors. Stopping consumer.")
+                    break
+
+                continue
+
+            empty_polls = 0
+            error_count = 0
+
+            text = msg.value().decode('utf-8', errors='replace')
+            cleaned_text = clean_text(text)
+
+            if not cleaned_text:
+                continue
+
+            output.write(cleaned_text + '\n')
+            output.flush()
+
+            message_count += 1
+
+    print(f"Messages processed: {message_count}")
+    print(f"Output saved to: {OUTPUT_FILE}")
+
+finally:
+    consumer.close()
