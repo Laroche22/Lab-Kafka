@@ -6,7 +6,7 @@ Read a Project Gutenberg book line by line, send each line to Kafka, then consum
 
 ## Work split
 
-- Member 1 (Laroche): environment setup, Kafka demonstration, new topic and documentation.
+- Member 1: environment setup, Kafka demonstration, new topic and documentation.
 - Member 2: select and download the book and implement the book producer.
 - Member 3: implement the book consumer, text processing and output file.
 - Together: integrate the scripts and test the complete book pipeline.
