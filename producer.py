@@ -1,34 +1,30 @@
-# %%
 import socket
-import time
 from confluent_kafka import Producer
-from datetime import datetime, timedelta
 
-
-# %%
-print(datetime.now().strftime("%H:%M"))
-# %%
-conf = {'bootstrap.servers': 'localhost:9092',
-        'client.id': socket.gethostname()}
+conf = {
+    'bootstrap.servers': 'localhost:9092',
+    'client.id': socket.gethostname()
+}
 
 producer = Producer(conf)
+topic = 'book-lines'
+book_path = 'book.txt'
 
-# %%
-topic='timer'
-message='The time is now '
-# %% Streaming Query
-duration = 5 # Streaming window in minutes
-start_time = datetime.now() # Current clock time
-stop_time = start_time + timedelta(minutes=duration) #start+duration=stop
+def delivery_report(err, msg):
+    if err is not None:
+        print(f"Échec de l'envoi : {err}")
 
-while datetime.now() < stop_time:
-  time_now = datetime.now().strftime("%H:%M:%S")
-  producer.produce(
-    topic=topic,
-    value=message + time_now
-  )
-  print(message + time_now)
-  time.sleep(1)
+with open(book_path, 'r', encoding='utf-8') as f:
+    for line in f:
+        line_clean = line.strip()
+        if not line_clean:
+            continue
+        producer.poll(0)
+        producer.produce(
+            topic=topic,
+            value=line_clean.encode('utf-8'),
+            callback=delivery_report
+        )
 
 producer.flush()
-producer.close()
+print("Livre envoyé avec succès dans le topic !")
