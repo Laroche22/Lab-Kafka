@@ -13,9 +13,11 @@ Read a Project Gutenberg book line by line, send each line to Kafka, then consum
 
 ## Current progress
 
-The demonstration on topic `timer` has been tested: the producer sends messages and the consumer receives them. The new topic `book-lines` has also been created successfully on member 1's computer.
+The Kafka demonstration using the `timer` topic has been tested successfully.
 
-The book producer, book consumer and complete book pipeline still need to be added and tested.
+The book pipeline has also been implemented and tested by all group members. The `book-lines` topic is created successfully, the producer reads `book.txt` line by line and sends non-empty lines to Kafka, and the consumer receives the messages, cleans and processes the text, and saves the result to `cleaned_book.txt`.
+
+The complete pipeline has been tested successfully in each member's local environment. During testing, the consumer processed 6,730 messages and the generated output file was checked.
 
 ## Files
 
